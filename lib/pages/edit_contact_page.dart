@@ -3,7 +3,6 @@ import '../models/contact.dart';
 
 class EditContactPage extends StatefulWidget {
   final Contact contact;
-
   const EditContactPage({super.key, required this.contact});
 
   @override
@@ -11,41 +10,41 @@ class EditContactPage extends StatefulWidget {
 }
 
 class _EditContactPageState extends State<EditContactPage> {
-  late TextEditingController _name;
-  late TextEditingController _phone;
+  late TextEditingController nameController;
+  late TextEditingController phoneController;
 
   @override
   void initState() {
     super.initState();
-    _name = TextEditingController(text: widget.contact.name);
-    _phone = TextEditingController(text: widget.contact.phone);
+    nameController = TextEditingController(text: widget.contact.name);
+    phoneController = TextEditingController(text: widget.contact.phone);
+  }
+
+  void _save() {
+    if (nameController.text.isEmpty || phoneController.text.isEmpty) return;
+
+    final updated = Contact(
+      id: widget.contact.id,
+      userId: widget.contact.userId,
+      name: nameController.text.trim(),
+      phone: phoneController.text.trim(),
+    );
+    Navigator.pop(context, updated);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Modifier le contact')),
+      appBar: AppBar(title: const Text("Modifier Contact")),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            TextField(controller: _name, decoration: const InputDecoration(labelText: 'Nom')),
+            TextField(controller: nameController, decoration: const InputDecoration(labelText: "Nom")),
             const SizedBox(height: 12),
-            TextField(controller: _phone, decoration: const InputDecoration(labelText: 'Téléphone')),
+            TextField(controller: phoneController, decoration: const InputDecoration(labelText: "Téléphone")),
             const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(
-                  context,
-                  Contact(
-                    id: widget.contact.id,
-                    name: _name.text,
-                    phone: _phone.text,
-                  ),
-                );
-              },
-              child: const Text('Enregistrer'),
-            ),
+            ElevatedButton(onPressed: _save, child: const Text("Enregistrer")),
           ],
         ),
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../database/db_helper.dart'; // <- important pour accéder à SQLite
+import '../database/db_helper.dart';
+import '../models/user.dart';
 import 'contacts_page.dart';
 import 'signup_page.dart';
 
@@ -11,47 +12,63 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final email = TextEditingController();
-  final password = TextEditingController();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
 
   void _login() async {
-    final user = await DatabaseHelper.instance.loginUser(
-      email.text.trim(),
-      password.text.trim(),
-    );
+    final email = emailController.text.trim();
+    final password = passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      _showError("Veuillez remplir tous les champs.");
+      return;
+    }
+
+    final user = await DatabaseHelper.instance.loginUser(email, password);
+
+    if (!mounted) return;
 
     if (user != null) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const ContactsPage()),
+        MaterialPageRoute(builder: (_) => ContactsPage(user: user)),
       );
     } else {
-      showDialog(
-        context: context,
-        builder: (_) => const AlertDialog(
-          title: Text("Erreur"),
-          content: Text("Identifiants incorrects."),
-        ),
-      );
+      _showError("Email ou mot de passe incorrect.");
     }
+  }
+
+  void _showError(String msg) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Erreur"),
+        content: Text(msg),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Connexion")),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TextField(
-              controller: email,
+              controller: emailController,
               decoration: const InputDecoration(labelText: "Email"),
             ),
             const SizedBox(height: 12),
             TextField(
-              controller: password,
+              controller: passwordController,
               obscureText: true,
               decoration: const InputDecoration(labelText: "Mot de passe"),
             ),
