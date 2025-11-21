@@ -10,21 +10,37 @@ class DeleteContactPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text("Supprimer Contact")),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('Supprimer ${contact.name} ?', style: const TextStyle(fontSize: 18)),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: const Text("Supprimer"),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text("Annuler"),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Voulez-vous vraiment supprimer :\n\n${contact.name} ${contact.surname ?? ""} ?',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 18),
+              ),
+              const SizedBox(height: 25),
+
+              // BOUTON SUPPRIMER
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  minimumSize: const Size(double.infinity, 45),
+                ),
+                child: const Text("Supprimer"),
+              ),
+
+              const SizedBox(height: 10),
+
+              // ANNULER
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text("Annuler"),
+              ),
+            ],
+          ),
         ),
       ),
     );

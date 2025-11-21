@@ -6,6 +6,9 @@ import 'add_contact_page.dart';
 import 'edit_contact_page.dart';
 import 'delete_contact_page.dart';
 import 'login_page.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:io';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class ContactsPage extends StatefulWidget {
   final User user;
@@ -24,34 +27,59 @@ class _ContactsPageState extends State<ContactsPage> {
     _loadContacts();
   }
 
-  void _loadContacts() async {
+  // Charger les contacts
+  Future<void> _loadContacts() async {
     final data = await DatabaseHelper.instance.getContactsByUser(widget.user.id!);
+    if (!mounted) return;
     setState(() => contacts = data);
   }
 
-  void _addContact(Contact contact) async {
-    await DatabaseHelper.instance.addContact(contact);
-    _loadContacts();
-  }
-
-  void _editContact(Contact contact) async {
+  // Mettre à jour un contact
+  Future<void> _editContact(Contact contact) async {
     await DatabaseHelper.instance.updateContact(contact);
     _loadContacts();
   }
 
-  void _deleteContact(int id) async {
+  // Supprimer un contact
+  Future<void> _deleteContact(int id) async {
     await DatabaseHelper.instance.deleteContact(id);
     _loadContacts();
   }
 
+  // Déconnexion
   void _logout() {
-    // Retour à la page de login
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (_) => const LoginPage()),
       (route) => false,
     );
   }
+
+  // Ouvrir WhatsApp
+Future<void> openWhatsApp(String phone) async {
+  // Nettoie le numéro
+  String cleanPhone = phone.replaceAll(RegExp(r'\D'), ''); // enlève espaces, tirets, etc.
+
+  // Transforme 06... → +336...
+  if (cleanPhone.startsWith('0') && cleanPhone.length == 10) {
+    cleanPhone = '33${cleanPhone.substring(1)}';
+  }
+
+  final String whatsappUrl = "https://wa.me/$cleanPhone";
+
+  try {
+    await launchUrl(
+      Uri.parse(whatsappUrl),
+      mode: LaunchMode.externalApplication, // ouvre WhatsApp si installé
+    );
+  } catch (e) {
+    // Si WhatsApp pas installé → ouvre dans le navigateur
+    await launchUrl(
+      Uri.parse(whatsappUrl),
+      mode: LaunchMode.platformDefault,
+    );
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -62,8 +90,7 @@ class _ContactsPageState extends State<ContactsPage> {
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: _logout,
-            tooltip: 'Déconnexion',
-          )
+          ),
         ],
       ),
       body: contacts.isEmpty
@@ -73,44 +100,75 @@ class _ContactsPageState extends State<ContactsPage> {
               itemBuilder: (_, i) {
                 final c = contacts[i];
                 return ListTile(
-                  title: Text(c.name),
-                  subtitle: Text(c.phone),
+                  leading: CircleAvatar(
+                    backgroundImage: 
+                        c.photo != null ? FileImage(File(c.photo!)) : null,
+                    child: c.photo == null ? const Icon(Icons.person) : null,
+                  ),
+                  title: Text("${c.name} ${c.surname ?? ""}"),
+                  subtitle: Text("${c.phone}\n${c.birthdate ?? ""}"),
+                  isThreeLine: true,
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // Modifier
                       IconButton(
                         icon: const Icon(Icons.edit, color: Colors.orange),
                         onPressed: () async {
                           final updated = await Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => EditContactPage(contact: c)),
+                            MaterialPageRoute(
+                              builder: (_) => EditContactPage(contact: c),
+                            ),
                           );
-                          if (updated != null) _editContact(updated);
+
+                          if (updated != null && updated is Contact) {
+                            _editContact(updated);
+                          }
                         },
                       ),
+
+                      // Supprimer
                       IconButton(
                         icon: const Icon(Icons.delete, color: Colors.red),
                         onPressed: () async {
                           final confirm = await Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => DeleteContactPage(contact: c)),
+                            MaterialPageRoute(
+                              builder: (_) => DeleteContactPage(contact: c),
+                            ),
                           );
                           if (confirm == true) _deleteContact(c.id!);
                         },
+                      ),
+
+                      // WhatsApp
+                      IconButton(
+                        icon: const FaIcon(
+                          FontAwesomeIcons.whatsapp,
+                          color: Colors.green,
+                        ),
+                        onPressed: () => openWhatsApp(c.phone),
                       ),
                     ],
                   ),
                 );
               },
             ),
+
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
         onPressed: () async {
           final newContact = await Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => AddContactPage(userId: widget.user.id!)),
+            MaterialPageRoute(
+              builder: (_) => AddContactPage(userId: widget.user.id!),
+            ),
           );
-          if (newContact != null) _addContact(newContact);
+
+          if (newContact != null && newContact is Contact) {
+            _loadContacts();
+          }
         },
       ),
     );

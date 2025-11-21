@@ -5,6 +5,7 @@ import '../models/contact.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
+
   static Database? _database;
 
   DatabaseHelper._init();
@@ -18,10 +19,22 @@ class DatabaseHelper {
   Future<Database> _initDB(String filePath) async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
-    return await openDatabase(path, version: 1, onCreate: _createDB);
+
+    return await openDatabase(
+      path,
+      version: 1,
+      onConfigure: _onConfigure,
+      onCreate: _createDB,
+    );
+  }
+
+  // Activer les foreign keys (important pour ON DELETE CASCADE)
+  Future<void> _onConfigure(Database db) async {
+    await db.execute('PRAGMA foreign_keys = ON');
   }
 
   Future _createDB(Database db, int version) async {
+    // Table des utilisateurs
     await db.execute('''
       CREATE TABLE users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -30,18 +43,23 @@ class DatabaseHelper {
         password TEXT NOT NULL
       )
     ''');
+
+    // Table des contacts
     await db.execute('''
       CREATE TABLE contacts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         name TEXT NOT NULL,
+        surname TEXT,
         phone TEXT NOT NULL,
+        birthdate TEXT,
+        photo TEXT,
         FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
       )
     ''');
   }
 
-  // Users
+  // ---------- USERS ----------
   Future<int> addUser(User user) async {
     final db = await instance.database;
     return await db.insert('users', user.toMap());
@@ -56,28 +74,42 @@ class DatabaseHelper {
 
   Future<User?> loginUser(String email, String password) async {
     final db = await instance.database;
-    final res = await db.query('users',
-        where: 'email = ? AND password = ?', whereArgs: [email, password]);
+    final res = await db.query(
+      'users',
+      where: 'email = ? AND password = ?',
+      whereArgs: [email, password],
+    );
     if (res.isNotEmpty) return User.fromMap(res.first);
     return null;
   }
 
-  // Contacts
+  // ---------- CONTACTS ----------
   Future<int> addContact(Contact contact) async {
     final db = await instance.database;
-    return await db.insert('contacts', contact.toMap());
+    // on enlève l'id si null pour que sqlite autogen l'id
+    final map = contact.toMap()..remove('id');
+    return await db.insert('contacts', map);
   }
 
   Future<List<Contact>> getContactsByUser(int userId) async {
     final db = await instance.database;
-    final res = await db.query('contacts', where: 'user_id = ?', whereArgs: [userId]);
+    final res = await db.query(
+      'contacts',
+      where: 'user_id = ?',
+      whereArgs: [userId],
+      orderBy: 'name COLLATE NOCASE ASC',
+    );
     return res.map((m) => Contact.fromMap(m)).toList();
   }
 
   Future<int> updateContact(Contact contact) async {
     final db = await instance.database;
-    return await db.update('contacts', contact.toMap(),
-        where: 'id = ?', whereArgs: [contact.id]);
+    return await db.update(
+      'contacts',
+      contact.toMap(),
+      where: 'id = ?',
+      whereArgs: [contact.id],
+    );
   }
 
   Future<int> deleteContact(int id) async {
@@ -87,7 +119,7 @@ class DatabaseHelper {
 
   Future close() async {
     final db = await instance.database;
-    db.close();
+    await db.close();
+    _database = null;
   }
 }
-
